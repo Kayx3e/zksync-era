@@ -153,7 +153,7 @@ impl TreeUpdater {
                     .await;
                 storage
                     .tee_proof_generation_dal()
-                    .insert_tee_proof_generation_details(l1_batch_number)
+                    .insert_tee_proof_generation_job(l1_batch_number)
                     .await;
             }
             save_postgres_latency.observe();
