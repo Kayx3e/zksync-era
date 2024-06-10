@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{extract::Path, Json};
+use axum::{extract::Path, response::IntoResponse, Json};
 use zksync_config::configs::ProofDataHandlerConfig;
 use zksync_dal::{tee_proof_generation_dal::TeeType, ConnectionPool, Core, CoreDal, SqlxError};
 use zksync_object_store::ObjectStore;
@@ -46,7 +46,7 @@ impl TeeRequestProcessor {
             .pool
             .connection()
             .await
-            .map_err(|_| RequestProcessorError::Sqlx(SqlxError::PoolClosed))?;
+            .map_err(|e| RequestProcessorError::Dal(e))?;
 
         let l1_batch_number_result = connection
             .tee_proof_generation_dal()
@@ -78,7 +78,7 @@ impl TeeRequestProcessor {
             .pool
             .connection()
             .await
-            .map_err(|_| RequestProcessorError::Sqlx(SqlxError::PoolClosed))?;
+            .map_err(|e| RequestProcessorError::Dal(e))?;
         let mut dal = connection.tee_proof_generation_dal();
 
         match payload {
@@ -96,7 +96,7 @@ impl TeeRequestProcessor {
                     TeeType::Sgx,
                 )
                 .await
-                .map_err(RequestProcessorError::Sqlx)?;
+                .map_err(|e| RequestProcessorError::Dal(e))?;
             }
             SubmitTeeProofRequest::SkippedProofGeneration => {
                 tracing::info!(
@@ -105,7 +105,7 @@ impl TeeRequestProcessor {
                 );
                 dal.mark_proof_generation_job_as_skipped(l1_batch_number)
                     .await
-                    .map_err(RequestProcessorError::Sqlx)?;
+                    .map_err(|e| RequestProcessorError::Dal(e))?;
             }
         }
 
@@ -122,12 +122,12 @@ impl TeeRequestProcessor {
             .pool
             .connection()
             .await
-            .map_err(|_| RequestProcessorError::Sqlx(SqlxError::PoolClosed))?;
+            .map_err(|e| RequestProcessorError::Dal(e))?;
         let mut dal = connection.tee_proof_generation_dal();
 
         dal.save_attestation(&payload.pubkey, &payload.attestation)
             .await
-            .map_err(RequestProcessorError::Sqlx)?;
+            .map_err(|e| RequestProcessorError::Dal(e))?; // TODO(patrick)
 
         Ok(Json(RegisterTeeAttestationResponse::Success))
     }

@@ -215,7 +215,7 @@ impl RequestProcessor {
                     .proof_generation_dal()
                     .save_proof_artifacts_metadata(l1_batch_number, &blob_url)
                     .await
-                    .map_err(RequestProcessorError::Sqlx)?;
+                    .map_err(|e| RequestProcessorError::Dal(e))?;
             }
             SubmitProofRequest::SkippedProofGeneration => {
                 self.pool
@@ -225,7 +225,7 @@ impl RequestProcessor {
                     .proof_generation_dal()
                     .mark_proof_generation_job_as_skipped(l1_batch_number)
                     .await
-                    .map_err(RequestProcessorError::Sqlx)?;
+                    .map_err(|e| RequestProcessorError::Dal(e))?;
             }
         }
 
