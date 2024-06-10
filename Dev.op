@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IERC20 {
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+contract SimpleDEX {
+    address public token1;
+    address public token2;
+    uint256 public reserve1;
+    uint256 public reserve2;
+    uint256 public totalLiquidity;
+    mapping(address => uint256) public liquidity;
+
+    event LiquidityAdded(address indexed provider, uint256 token1Amount, uint256 token2Amount);
+    event LiquidityRemoved(address indexed provider, uint256 token1Amount, uint256 token2Amount);
+    event TokensSwapped(address indexed trader, address inputToken, uint256 inputAmount, address outputToken, uint256 outputAmount);
+
+    constructor(address _token1, address _token2) {
+        token1 = _token1;
+        token2 = _token2;
+    }
+
+    function addLiquidity(uint256 token1Amount, uint256 token2Amount) external returns (uint256 liquidityMinted) {
+        require(token1Amount > 0 && token2Amount > 0, "Invalid amounts");
+
+        if (totalLiquidity == 0) {
+            liquidityMinted = sqrt(token1Amount * token2Amount);
+        } else {
+            liquidityMinted = min(token1Amount * totalLiquidity / reserve1, token2Amount * totalLiquidity / reserve2);
+        }
+
+        require(liquidityMinted > 0, "Invalid liquidity minted");
+
+        reserve1 += token1Amount;
+        reserve2 += token2Amount;
+        totalLiquidity += liquidityMinted;
+        liquidity[msg.sender] += liquidityMinted;
+
+        IERC20(token1).transferFrom(msg.sender, address(this), token1Amount);
+        IERC20(token2).transferFrom(msg.sender, address(this), token2Amount);
+
+        emit LiquidityAdded(msg.sender, token1Amount,
